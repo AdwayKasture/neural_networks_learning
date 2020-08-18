@@ -1,6 +1,6 @@
 import numpy as np
 
-
+#back prpogation to be implemented
 '''
 data generator to test basic model on
 N = 100 # number of points per class
