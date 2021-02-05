@@ -1,114 +1,133 @@
 import numpy as np
 
-#back prpogation to be implemented
+
 '''
-data generator to test basic model on
-N = 100 # number of points per class
-D = 2 # dimensionality
-K = 3 # number of classes
-X = np.zeros((N*K,D)) # data matrix (each row = single example)
-y = np.zeros(N*K, dtype='uint8') # class labels
-for j in range(K):
-  ix = range(N*j,N*(j+1))
-  r = np.linspace(0.0,1,N) # radius
-  t = np.linspace(j*4,(j+1)*4,N) + np.random.randn(N)*0.2 # theta
-  X[ix] = np.c_[r*np.sin(t), r*np.cos(t)]
-  y[ix] = j
-
-print(X,y)
-
-Architecture of nn
-1 2 
-1 2 3 
-1 2 3 4 5
-1 2 3
-
-
-
-X = [[1, 2, 3, 2.5],
-     [2.0, 5.0, -1.0, 2.0],
-     [-1.5, 2.7, 3.3, -0.8]]
+A simple neural net using numpy
+made after refering sentex video and https://victorzhou.com/blog/intro-to-neural-networks/
+the problem is taken from there
+activation function sigmoid :
+input layer (2)
+hidden layer(2)
+output layer(1)
 '''
 
-
-class Neural_net :
-    def __init__ (self):
-        self.inp = Layer_Dense(2,3)
-        self.l1 = Layer_Dense(3,5)
-        self.l2 = Layer_Dense(5,3)
-        self.out = Output_layer(3)
-    def test(self,inpp):
-        self.inp.forward_begin(inpp)
-        self.l1.forward(relu(self.inp.output,3))
-        #print(self.l1.output)
-        self.l2.forward(self.l1.output)
-        #print(self.l2.output)
-        self.out.forward(self.l2.output)
-        print(self.out.answer)
-
-    def display(self):
-        print(self.inp.weights)
-        print(self.l1.weights)
-        print(self.l2.weights)
-
-class Layer_Dense:
-    def __init__(self, n_inputs, n_neurons):
-        self.weights = 0.1 * np.random.randn(n_inputs, n_neurons)
-        self.biases = np.zeros((1, n_neurons))
-    def forward(self, inputs):
-        self.output = np.dot(inputs, self.weights) + self.biases
-    def forward_begin(self,inputs):
-        weights = [0.1,0.1,0.1]
-        self.output = np.dot(inputs,self.weights)
-            
-        
-#to manually set weights instead of random t oobserrve        
-class Layer_Dense2:
-    def __init__(self,weightlist,n_inp,n_neu):
-        self.weights = np.asarray(weightlist)
-        self.biases = np.zeros((1, n_neu))
-    def forward(self, inputs):
-        self.output = np.dot(inputs, self.weights) + self.biases
-    def forward_begin(self,inputs):
-        weights = [0.1,0.1,0.1]
-        self.output = np.dot(inputs,self.weights)
-    def show(self):
-        print(self.weights,self.biases)
-    def change_weights(self,x0,y0,val):
-        self.weights[x0 , y0] = val
-
-#activation function
-def relu(inpp,i_max):
-    print(inpp)
-    for i in range(i_max):
-            if inpp[i] < 0 :
-                inpp[i] = 0.0
-    print(inpp)
+def relu(inpp):
+    inpp =np.maximum(inpp,0)
     return inpp
 
+def deriv_relu(inpp):
+    inpp[inpp > 0 ] = 1
+    inpp[inpp <=0 ] = 0
+    return inpp
 
-#output layer with inherent soft max
-class Output_layer():
-    def __init__(self,numb):
-        self.array = np.ones((numb))
-    def forward(self,inpp):
-        for i in range(len(inpp[0])):
-            if inpp[0][i] == max(inpp[0]):
-                k = i
-                break 
-        self.answer =  k
+def deriv_sigmoid(x):
+  # Derivative of sigmoid: f'(x) = f(x) * (1 - f(x))
+  fx = sigmoid(x)
+  return fx * (1 - fx)
 
-
-#simple loss for gradient descent/back prop
-def loss(out, Y): 
-    s =(np.square(out-Y)) 
-    s = np.sum(s)/len(y) 
-    return(s) 
+def sigmoid(x):
+  # Sigmoid activation function: f(x) = 1 / (1 + e^(-x))
+  return 1 / (1 + np.exp(-x))
 
 
-#testing / output
-n1 = Neural_net()
-n1.test([1,1])
-#n1.test([1,0])
-#n1.test([0,1])
-#n1.test([0,0])
+class layer :
+    def __init__(self,inp,out):
+        self.weights = 0.1 * np.random.randn(inp, out)
+        self.biases = np.zeros((1, out))
+        self.inp = inp
+    def forward(self, inputs):
+        #store out_put in .output feed to next layer during feed forward
+        self.output = sigmoid(np.dot(inputs, self.weights) + self.biases)
+        return self.output
+
+
+
+class model :
+    def __init__(self):
+        #input -> hidden layer l1 
+        self.l1 = layer(2,2)
+        # hidden layer -> output layer 
+        self.l2 = layer(2,1)
+    def predict(self,x):
+        #input -> hidden layer and store in output_1
+        self.output_1 = self.l1.forward(x)
+        #hidden layer -> output final output in output_2
+        self.output_2 = self.l2.forward(self.output_1)
+        #return the output
+        return self.output_2
+
+
+    def back_prop(self,x,y,learn_r):
+        self.predict(x)
+        #last layer ,partial deriv wrp all params
+        d_L_d_ypred = -2 *(y - self.output_2)
+        d_ypred_d_w = self.output_1 *deriv_sigmoid(self.output_2)
+        d_ypred_d_b = deriv_sigmoid(self.output_2)
+        d_ypred_d_ll1 = self.l2.weights * deriv_sigmoid(self.output_2)
+        #second last layer
+        d_output1_d_w = x * deriv_sigmoid(l1.output)
+        d_output1_d_b = deriv_sigmoid(l1.output)
+        #update_weights l1
+        self.l1.weights = self.l1.weights - learn_r * d_L_d_ypred * np.transpose(d_ypred_d_ll1) * d_output1_d_w
+        self.l1.biases = self.l1.biases - learn_r * d_L_d_ypred * np.transpose(d_ypred_d_ll1) * d_output1_d_b
+        #update weights l2
+        self.l2.weights = self.l2.weights - learn_r * d_L_d_ypred * np.transpose(d_ypred_d_w)
+        self.l2.biases = self.l2.biases - learn_r * d_L_d_ypred * np.transpose(d_ypred_d_b)
+
+        
+    def mass_predict(self,x):
+        #predict for the batch 
+        return(np.apply_along_axis(self.predict, 1, x))
+
+
+#initialise model
+m1 = model()
+
+#input data x
+data = np.array([
+  [-2, -1],  # Alice
+  [25, 6],   # Bob
+  [17, 4],   # Charlie
+  [-15, -6], # Diana
+])
+
+#input data Y
+all_y_trues = np.array([
+  1, # Alice
+  0, # Bob
+  0, # Charlie
+  1, # Diana
+])
+
+
+#function to train the model  on data
+def train_model(modell,data_x,data_y):
+    learn_rate = 0.1
+    epochs = 1000
+    #number of iterations 
+    for epoch in range(epochs):
+        for x,Y in zip(data_x,data_y):
+            #back propogation
+            modell.back_prop(x,Y,learn_rate)
+            #check loss for batch after every 10 epoch should decrease in each
+        if (epoch % 10) == 0:
+            #predict for batch
+            y_pred = modell.mass_predict(data_x)
+            #reshape to compare (4,1,1) -> (4,)
+            y_pred = y_pred.reshape(-1)
+            #MSE 
+            loss = np.mean(np.square((y_pred - data_y)))
+            print("Epoch %d loss: %.3f" % (epoch, loss))
+
+
+#testing inital for (-12,-14) should return 1 after training , before most likely will be near 0.5
+m1.predict([-12,-14])#value stored in output_2
+
+print(m1.output_2)
+
+#training model
+train_model(m1,data,all_y_trues)
+
+#to check if model trained should almost be  1
+m1.predict([-12,-14])
+print(m1.output_2)
